@@ -66,17 +66,16 @@ def main():
     if not os.path.isabs(db_path):
         db_path = os.path.join(HERE, db_path)
     db = DB(db_path)
+    if a.command == "export":   # reads only the local database, no SEC access needed
+        from tracker.export import export
+        print(export(db, cfg, a.out))
+        return
     try:
         client = sec.SecClient(cfg.get("user_agent", ""))
     except sec.SecError as e:
         sys.exit(str(e))
     syncer = Syncer(db, client, cfg)
     syncer.seed()
-
-    if a.command == "export":
-        from tracker.export import export
-        print(export(db, cfg, a.out))
-        return
 
     if a.command == "sync":
         print(syncer.run(market=not a.no_market, funds=not a.no_funds))
