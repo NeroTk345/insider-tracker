@@ -1,0 +1,81 @@
+{
+  "user_agent": "wordt ingevuld via GitHub Secret TRACKER_USER_AGENT",
+  "db_path": "data/tracker.db",
+  "watchlist": [
+    "AAPL",
+    "NVDA",
+    "MSFT",
+    "META",
+    "TSLA",
+    "AMZN",
+    "GOOGL"
+  ],
+  "insider_lookback_days": 180,
+  "market_scan": {
+    "enabled": true,
+    "feed_pages": 5,
+    "days_back": 2,
+    "max_filings": 3000,
+    "queue_max_age_days": 10
+  },
+  "funds": [
+    {
+      "cik": "0001067983",
+      "label": "Berkshire Hathaway (Buffett)"
+    },
+    {
+      "cik": "0001336528",
+      "label": "Pershing Square (Ackman)"
+    },
+    {
+      "cik": "0001649339",
+      "label": "Scion (Burry)"
+    },
+    {
+      "cik": "0001061768",
+      "label": "Baupost (Klarman)"
+    },
+    {
+      "cik": "0001536411",
+      "label": "Duquesne (Druckenmiller)"
+    },
+    {
+      "cik": "0001656456",
+      "label": "Appaloosa (Tepper)"
+    },
+    {
+      "cik": "0001350694",
+      "label": "Bridgewater (Dalio)"
+    }
+  ],
+  "fund_quarters": 4,
+  "alerts": {
+    "max_age_days": 3,
+    "min_purchase_value": 250000,
+    "watchlist_any_purchase": true,
+    "min_watchlist_sale_value": 5000000,
+    "skip_10b5_1_plans": false,
+    "cluster_days": 14,
+    "cluster_min_insiders": 3,
+    "fund_max_age_days": 14,
+    "fund_min_weight": 0.5,
+    "fund_increase_pct": 50,
+    "max_per_run": 15
+  },
+  "notify": {
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "ntfy_server": "https://ntfy.sh",
+    "ntfy_topic": ""
+  },
+  "openfigi": {
+    "enabled": true,
+    "api_key": ""
+  },
+  "config_is_source": true,
+  "export": {
+    "purchase_days": 365,
+    "sale_days": 90,
+    "min_sale_value": 100000
+  }
+}

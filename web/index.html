@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insider Tracker</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #151b23; --panel2: #1c2430; --line: #2a3441;
+    --text: #e6edf3; --muted: #8b98a8; --accent: #4f8cff;
+    --green: #2fbf71; --red: #f0565b; --amber: #e7a93a; --violet: #a37cf0;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px;
+           border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(13,17,23,.92);
+           backdrop-filter: blur(8px); z-index: 5; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 16px; letter-spacing: .2px; display: flex; align-items: center; gap: 8px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green);
+                box-shadow: 0 0 10px var(--green); }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav a { color: var(--muted); padding: 6px 12px; border-radius: 6px; font-weight: 500; }
+  nav a.active, nav a:hover { color: var(--text); background: var(--panel2); text-decoration: none; }
+  .search { margin-left: auto; position: relative; }
+  .search input { width: 240px; }
+  .suggest { position: absolute; top: 38px; right: 0; width: 320px; background: var(--panel2);
+             border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: none; }
+  .suggest div { padding: 8px 12px; cursor: pointer; display: flex; gap: 10px; }
+  .suggest div:hover { background: var(--line); }
+  .syncpill { font-size: 12px; color: var(--muted); }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; font-weight: 600; }
+  .sub { color: var(--muted); margin-bottom: 20px; }
+  .grid { display: grid; gap: 16px; }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .tile .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .tile .val { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile .hint { color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px; padding: 8px 10px;
+       border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(42,52,65,.6); vertical-align: top; }
+  tr:hover td { background: rgba(79,140,255,.04); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td a[target] { white-space: nowrap; }
+  .scroll { overflow: auto; max-height: 640px; }
+  .tk { font-weight: 700; color: var(--text); background: var(--panel2); padding: 1px 7px; border-radius: 5px;
+        border: 1px solid var(--line); font-size: 12px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 600;
+           white-space: nowrap; }
+  .b-buy, .b-nieuw { background: rgba(47,191,113,.15); color: var(--green); }
+  .b-bijgekocht { background: rgba(47,191,113,.10); color: #7fd9a6; }
+  .b-sell, .b-verkocht { background: rgba(240,86,91,.15); color: var(--red); }
+  .b-afgebouwd { background: rgba(240,86,91,.10); color: #f3999c; }
+  .b-other, .b-gelijk, .b-onbekend { background: rgba(139,152,168,.12); color: var(--muted); }
+  .b-cluster { background: rgba(163,124,240,.15); color: var(--violet); }
+  .b-fund { background: rgba(79,140,255,.15); color: var(--accent); }
+  .b-plan { background: rgba(231,169,58,.15); color: var(--amber); }
+  .b-warn { background: rgba(240,86,91,.18); color: #ff9a9d; border: 1px solid rgba(240,86,91,.4); cursor: help; }
+  .note { background: rgba(231,169,58,.08); border: 1px solid rgba(231,169,58,.3); color: #f0c879; border-radius: 8px;
+          padding: 8px 12px; margin-bottom: 14px; font-size: 13px; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  input, select, button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
+                          border-radius: 7px; padding: 7px 10px; }
+  input:focus, select:focus { outline: 1px solid var(--accent); }
+  button { cursor: pointer; font-weight: 600; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  button:hover { filter: brightness(1.15); }
+  button:disabled { opacity: .5; cursor: default; }
+  .fundcards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .fundcard { cursor: pointer; transition: border-color .15s; }
+  .fundcard:hover { border-color: var(--accent); }
+  .fundcard .name { font-weight: 600; }
+  .bar { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .alert { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .alert:last-child { border: 0; }
+  .alert .t { font-weight: 600; }
+  .empty { color: var(--muted); padding: 24px; text-align: center; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 99px; padding: 4px 6px 4px 12px;
+          display: inline-flex; gap: 6px; align-items: center; }
+  .chip button { padding: 0 6px; border: 0; background: transparent; color: var(--muted); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .legend { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  #login { position: fixed; inset: 0; background: var(--bg); display: none; place-items: center; z-index: 20; }
+  #login .card { width: 320px; display: grid; gap: 12px; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel2); border: 1px solid var(--line);
+           padding: 10px 16px; border-radius: 8px; display: none; z-index: 30; }
+  @media (max-width: 700px) { .g2 { grid-template-columns: 1fr; } .search input { width: 160px; } main { padding: 14px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>Insider Tracker</div>
+  <nav id="nav">
+    <a href="#/">Overzicht</a>
+    <a href="#/insiders">Insiders</a>
+    <a href="#/fondsen">Superbeleggers</a>
+    <a href="#/alerts">Alerts</a>
+    <a href="#/instellingen">Instellingen</a>
+  </nav>
+  <div class="search">
+    <input id="q" placeholder="Zoek aandeel (bv. NVDA)" autocomplete="off">
+    <div class="suggest" id="suggest"></div>
+  </div>
+  <span class="syncpill" id="syncpill"></span>
+</header>
+<main id="app"></main>
+<div id="login"><div class="card"><h2>Inloggen</h2>
+  <input id="pw" type="password" placeholder="Wachtwoord"><button class="primary" onclick="login()">Inloggen</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="static.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const STATIC = !!window.STATIC_MODE;
+async function api(path, opts = {}) {
+  if (STATIC) return staticApi(path, opts);
+  const r = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (r.status === 401) { $('#login').style.display = 'grid'; throw new Error('auth'); }
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+const post = (path, body) => api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+async function login() {
+  try { await post('/login', { password: $('#pw').value }); $('#login').style.display = 'none'; route(); }
+  catch (e) { toast('Fout wachtwoord'); }
+}
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3000); }
+
+// ---------- formatting
+const nf = new Intl.NumberFormat('nl-NL');
+function money(v) {
+  if (v == null) return '<span class="muted">–</span>';
+  const a = Math.abs(v);
+  if (a >= 1e9) return '$' + (v / 1e9).toFixed(2).replace('.', ',') + ' mld';
+  if (a >= 1e6) return '$' + (v / 1e6).toFixed(2).replace('.', ',') + ' mln';
+  if (a >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'k';
+  return '$' + v.toFixed(0);
+}
+const num = v => v == null ? '–' : nf.format(Math.round(v));
+const price = v => v == null ? '–' : '$' + v.toFixed(2).replace('.', ',');
+const pct = v => v == null ? '–' : `<span class="${v >= 0 ? 'pos' : 'neg'}">${v > 0 ? '+' : ''}${String(v).replace('.', ',')}%</span>`;
+const date = d => d ? d.split('-').reverse().join('-') : '–';
+const tk = (t, name) => t ? `<a href="#/aandeel/${esc(t)}" class="tk">${esc(t)}</a>` : `<span class="muted small">${esc(name || '')}</span>`;
+const CODES = { P: ['Aankoop', 'buy'], S: ['Verkoop', 'sell'], A: ['Toekenning', 'other'], M: ['Optie-uitoef.', 'other'],
+  X: ['Optie-uitoef.', 'other'], F: ['Belasting', 'other'], G: ['Schenking', 'other'], D: ['Teruggave', 'other'],
+  C: ['Conversie', 'other'], J: ['Overig', 'other'] };
+const code = c => { const [l, k] = CODES[c] || [c || '?', 'other']; return `<span class="badge b-${k}">${l}</span>`; };
+const filingLink = (cik, acc) => `https://www.sec.gov/Archives/edgar/data/${cik}/${acc.replace(/-/g, '')}/${acc}-index.htm`;
+const flags = r => (r.suspect ? ` <span class="badge b-warn" title="${esc(r.suspect)}">⚠ controleer</span>` : '')
+  + (r.form === '4/A' ? ' <span class="badge b-other" title="Gecorrigeerde melding (Form 4/A)">correctie</span>' : '');
+const roles = r => esc(r || '').replace(/Chief Executive Officer/gi, 'CEO').replace(/Chief Financial Officer/gi, 'CFO');
+
+// ---------- static mode (GitHub Pages): same API, answered from exported JSON
+const _cache = {};
+async function sj(file, fallback) {
+  if (!(file in _cache)) {
+    _cache[file] = fetch('data/' + file, { cache: 'no-cache' }).then(r => r.ok ? r.json() : fallback ?? Promise.reject(new Error('niet gevonden')));
+  }
+  return _cache[file];
+}
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+async function txRows() {
+  const t = await sj('transactions.json');
+  if (!t._rows) t._rows = t.rows.map(r => Object.fromEntries(t.cols.map((c, i) => [c, r[i]])));
+  return t._rows;
+}
+function summarize(rows, code, days, minValue = 0, tickers = null, limit = 100) {
+  const since = daysAgo(days), g = new Map();
+  for (const r of rows) {
+    if (r.code !== code || r.derivative || r.tx_date < since || (tickers && !tickers.includes(r.ticker))) continue;
+    let a = g.get(r.accession);
+    if (!a) g.set(r.accession, a = { ...r, first_date: r.tx_date, last_date: r.tx_date, shares: 0, value: 0, max_after: -Infinity, min_after: Infinity });
+    a.shares += r.shares || 0; a.value += r.value || 0;
+    if (r.tx_date < a.first_date) a.first_date = r.tx_date;
+    if (r.tx_date > a.last_date) a.last_date = r.tx_date;
+    if (r.shares_after != null) { a.max_after = Math.max(a.max_after, r.shares_after); a.min_after = Math.min(a.min_after, r.shares_after); }
+    for (const k of ['is_officer', 'is_director', 'plan_10b5_1']) a[k] = a[k] || r[k];
+    a.suspect = a.suspect || r.suspect;
+  }
+  return [...g.values()].map(a => {
+    const after = code === 'P' ? a.max_after : a.min_after;
+    a.shares_after = isFinite(after) ? after : null;
+    const before = code === 'P' ? (a.shares_after || 0) - a.shares : (a.shares_after || 0) + a.shares;
+    a.stake_change_pct = before > 0 ? Math.round(1000 * a.shares / before) / 10 : null;
+    a.avg_price = a.shares > 0 ? a.value / a.shares : null;
+    return a;
+  }).filter(a => a.value >= minValue).sort((x, y) => y.value - x.value).slice(0, limit);
+}
+function clustersOf(rows, days, min) {
+  const since = daysAgo(days), g = new Map();
+  for (const r of rows) {
+    if (r.code !== 'P' || r.derivative || r.tx_date < since) continue;
+    let c = g.get(r.issuer_cik);
+    if (!c) g.set(r.issuer_cik, c = { issuer_cik: r.issuer_cik, issuer_name: r.issuer_name, ticker: r.ticker, owners: new Map(), value: 0, first_date: r.tx_date, last_date: r.tx_date });
+    c.owners.set(r.owner_cik, r.owner_name); c.value += r.value || 0;
+    if (r.tx_date < c.first_date) c.first_date = r.tx_date;
+    if (r.tx_date > c.last_date) c.last_date = r.tx_date;
+  }
+  return [...g.values()].filter(c => c.owners.size >= min)
+    .map(c => ({ ...c, insiders: c.owners.size, owners: [...new Set(c.owners.values())].sort() }))
+    .sort((a, b) => b.insiders - a.insiders || b.value - a.value);
+}
+async function staticApi(path, opts) {
+  if (opts.method === 'POST') throw new Error('Niet beschikbaar op GitHub Pages: pas config.pages.json aan in je repo');
+  const u = new URL(path, 'http://x'), q = Object.fromEntries(u.searchParams), p = u.pathname;
+  if (p === '/stats') return sj('stats.json');
+  if (p === '/alerts') return sj('alerts.json', []);
+  if (p === '/watchlist') return sj('watchlist.json', []);
+  if (p === '/funds') return sj('funds.json', []);
+  let m = p.match(/^\/funds\/(\d+)$/);
+  if (m) return sj(`fund/${m[1]}${q.period ? '_' + q.period : ''}.json`, { filing: null, holdings: [], periods: [] });
+  m = p.match(/^\/stock\/(.+)$/);
+  if (m) {
+    const t = decodeURIComponent(m[1]).toUpperCase();
+    return sj(`stock/${t.replace(/[^A-Za-z0-9._-]/g, '_')}.json`, { ticker: t, info: null, transactions: [], buy_total_12m: 0,
+      sell_total_12m: 0, buyers_12m: 0, sellers_12m: 0, fund_holders: [] });
+  }
+  if (p === '/search') {
+    const v = (q.q || '').toUpperCase();
+    return (await sj('search.json', [])).filter(([t, n]) => t.startsWith(v) || n.toUpperCase().includes(v))
+      .sort((a, b) => (b[0] === v) - (a[0] === v) || a[0].length - b[0].length).slice(0, 10).map(([ticker, title]) => ({ ticker, title }));
+  }
+  const rows = await txRows();
+  if (p === '/top') {
+    const wl = q.watchlist === '1' ? (await sj('watchlist.json', [])).map(w => w.ticker) : null;
+    return summarize(rows, q.code || 'P', +(q.days || 30), +(q.min_value || 0), wl, +(q.limit || 100));
+  }
+  if (p === '/clusters') return clustersOf(rows, +(q.days || 30), +(q.min || 2));
+  if (p === '/transactions') {
+    const since = daysAgo(+(q.days || 30)), codes = q.code ? q.code.split(',') : null, mv = +(q.min_value || 0);
+    return rows.filter(r => r.tx_date >= since && (!codes || codes.includes(r.code)) && (!mv || (r.value || 0) >= mv)
+      && (!q.ticker || r.ticker === q.ticker.toUpperCase())
+      && (!q.role || (q.role === 'ceo' ? /CEO|Chief Executive/i.test(r.roles) : q.role === 'officer' ? r.is_officer : r.is_director)))
+      .slice(0, +(q.limit || 300));
+  }
+  throw new Error('onbekend: ' + p);
+}
+
+// ---------- router
+const routes = [
+  [/^#?\/?$/, viewOverview],
+  [/^#\/insiders$/, viewInsiders],
+  [/^#\/fondsen$/, viewFunds],
+  [/^#\/fonds\/(\d+)(?:\/(.+))?$/, viewFund],
+  [/^#\/aandeel\/(.+)$/, viewStock],
+  [/^#\/alerts$/, viewAlerts],
+  [/^#\/instellingen$/, viewSettings],
+];
+async function route() {
+  const h = location.hash || '#/';
+  document.querySelectorAll('#nav a').forEach(a => {
+    const base = a.getAttribute('href');
+    a.classList.toggle('active', base === '#/' ? h === '#/' || h === '' : h.startsWith(base) || (base === '#/fondsen' && h.startsWith('#/fonds/')));
+  });
+  for (const [re, fn] of routes) {
+    const m = h.match(re);
+    if (m) {
+      app.innerHTML = '<div class="empty">Laden…</div>';
+      try { await fn(...m.slice(1).map(x => x && decodeURIComponent(x))); }
+      catch (e) { if (e.message !== 'auth') app.innerHTML = `<div class="empty">Fout: ${esc(e.message)}</div>`; }
+      return;
+    }
+  }
+  app.innerHTML = '<div class="empty">Pagina niet gevonden</div>';
+}
+window.addEventListener('hashchange', route);
+
+// ---------- shared tables
+function buysTable(rows, kind = 'buy') {
+  if (!rows.length) return '<div class="empty">Nog geen data. Start een sync via Instellingen.</div>';
+  return `<div class="scroll"><table><thead><tr><th>Aandeel</th><th>Insider</th><th class="num">Waarde</th>
+    <th class="num">Gem. prijs</th><th class="num">Belang</th><th>Datum</th></tr></thead><tbody>
+    ${rows.map(r => `<tr>
+      <td>${tk(r.ticker, r.issuer_name)}<div class="muted small">${esc(r.issuer_name)}</div></td>
+      <td>${esc(r.owner_name)}<div class="muted small">${roles(r.roles)} ${r.plan_10b5_1 ? '<span class="badge b-plan">10b5-1</span>' : ''}${flags(r)}</div></td>
+      <td class="num"><b class="${kind === 'buy' ? 'pos' : 'neg'}">${money(r.value)}</b><div class="muted small">${num(r.shares)} st.</div></td>
+      <td class="num">${price(r.avg_price)}</td>
+      <td class="num">${r.stake_change_pct != null ? pct(kind === 'buy' ? r.stake_change_pct : -r.stake_change_pct) : '–'}</td>
+      <td><a href="${filingLink(r.issuer_cik, r.accession)}" target="_blank" rel="noopener">${date(r.last_date)}</a></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function clustersTable(rows) {
+  if (!rows.length) return '<div class="empty">Geen cluster-aankopen in deze periode.</div>';
+  return `<table><thead><tr><th>Aandeel</th><th class="num">Insiders</th><th class="num">Totaal</th><th>Periode</th></tr></thead><tbody>
+    ${rows.map(c => `<tr><td>${tk(c.ticker, c.issuer_name)}<div class="muted small">${esc(c.owners.slice(0, 4).join(', '))}${c.owners.length > 4 ? '…' : ''}</div></td>
+    <td class="num"><span class="badge b-cluster">${c.insiders}</span></td><td class="num pos"><b>${money(c.value)}</b></td>
+    <td class="small">${date(c.first_date)} → ${date(c.last_date)}</td></tr>`).join('')}</tbody></table>`;
+}
+function txTable(rows, showTicker = true) {
+  if (!rows.length) return '<div class="empty">Geen transacties gevonden met deze filters.</div>';
+  return `<div class="scroll"><table><thead><tr>${showTicker ? '<th>Aandeel</th>' : ''}<th>Insider</th><th>Type</th>
+    <th class="num">Aantal</th><th class="num">Prijs</th><th class="num">Waarde</th><th class="num">Bezit na</th><th>Datum</th></tr></thead><tbody>
+    ${rows.map(t => `<tr>${showTicker ? `<td>${tk(t.ticker, t.issuer_name)}</td>` : ''}
+      <td>${esc(t.owner_name)}<div class="muted small">${roles(t.roles)}</div></td>
+      <td>${code(t.code)} ${t.plan_10b5_1 ? '<span class="badge b-plan">10b5-1</span>' : ''}${t.derivative ? ' <span class="muted small">derivaat</span>' : ''}${flags(t)}</td>
+      <td class="num">${num(t.shares)}</td><td class="num">${price(t.price)}</td>
+      <td class="num ${t.code === 'P' ? 'pos' : t.code === 'S' ? 'neg' : ''}">${money(t.value)}</td>
+      <td class="num muted">${num(t.shares_after)}</td>
+      <td><a href="${filingLink(t.issuer_cik, t.accession)}" target="_blank" rel="noopener">${date(t.tx_date)}</a></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+function alertsList(rows) {
+  if (!rows.length) return '<div class="empty">Nog geen alerts.</div>';
+  const kinds = { buy: 'Aankoop', sell: 'Verkoop', cluster: 'Cluster', fund: 'Fonds' };
+  return rows.map(a => `<div class="alert"><div class="row"><span class="badge b-${a.kind}">${kinds[a.kind] || a.kind}</span>
+    <span class="t">${esc(a.title)}</span><span class="muted small" style="margin-left:auto">${esc(a.created)}</span></div>
+    <div class="muted" style="margin-top:4px">${esc(a.body)}</div>
+    <div class="small" style="margin-top:4px">${a.ticker ? tk(a.ticker) + ' ' : ''}${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener">SEC-filing ↗</a>` : ''}</div></div>`).join('');
+}
+
+// ---------- views
+async function viewOverview() {
+  const [s, top, sells, cl, al] = await Promise.all([api('/stats'), api('/top?code=P&days=30&limit=15'),
+    api('/top?code=S&days=30&limit=8&watchlist=1&min_value=1000000'), api('/clusters?days=30&min=2'), api('/alerts')]);
+  app.innerHTML = `<h1>Overzicht</h1><div class="sub">Wat insiders en grote fondsen doen, rechtstreeks uit SEC-filings.</div>
+    <div class="grid g4" style="margin-bottom:16px">
+      <div class="card tile"><div class="lbl">Insider-aankopen 30d</div><div class="val">${num(s.buys_30d)}</div><div class="hint">open-market aankopen (code P)</div></div>
+      <div class="card tile"><div class="lbl">Transacties</div><div class="val">${num(s.transactions)}</div><div class="hint">${num(s.companies)} bedrijven</div></div>
+      <div class="card tile"><div class="lbl">Fondsen</div><div class="val">${num(s.funds)}</div><div class="hint">${num(s.f13_filings)} kwartaalrapporten</div></div>
+      <div class="card tile"><div class="lbl">Laatste filing</div><div class="val" style="font-size:20px">${date(s.latest_filing)}</div><div class="hint">${num(s.alerts)} alerts totaal</div></div>
+    </div>
+    <div class="grid g2">
+      <div class="card"><h2>Grootste insider-aankopen · 30 dagen</h2>${buysTable(top)}</div>
+      <div class="grid" style="align-content:start">
+        <div class="card"><h2>Cluster-aankopen · meerdere insiders tegelijk</h2>${clustersTable(cl.slice(0, 10))}</div>
+        <div class="card"><h2>Laatste alerts</h2>${alertsList(al.slice(0, 5))}</div>
+        <div class="card"><h2>Grote verkopen op je watchlist · 30 dagen</h2>${buysTable(sells, 'sell')}</div>
+      </div>
+    </div>`;
+}
+
+const insFilter = { code: 'P', days: 30, min_value: '', role: '', ticker: '', mode: 'tx' };
+async function viewInsiders() {
+  const f = insFilter;
+  app.innerHTML = `<h1>Insider-transacties</h1><div class="sub">Form 4: bestuurders, directeuren en 10%-aandeelhouders moeten binnen 2 werkdagen melden wat ze kopen of verkopen.</div>
+    <div class="card"><div class="filters">
+      <select id="f_mode"><option value="tx">Per transactie</option><option value="filing">Per melding (opgeteld)</option></select>
+      <select id="f_code"><option value="P">Aankopen</option><option value="S">Verkopen</option><option value="P,S">Aan- en verkopen</option><option value="">Alles (ook toekenningen)</option></select>
+      <select id="f_days"><option>7</option><option>30</option><option>90</option><option>180</option><option>365</option></select>
+      <select id="f_role"><option value="">Alle rollen</option><option value="ceo">Alleen CEO</option><option value="officer">Officers</option><option value="director">Directors</option></select>
+      <input id="f_min" type="number" placeholder="Min. waarde $" style="width:140px">
+      <input id="f_ticker" placeholder="Ticker" style="width:100px">
+      <button class="primary" id="f_go">Filter</button>
+    </div><div id="ins_res"><div class="empty">Laden…</div></div>
+    <div class="legend">⚠ controleer = de prijs of het aantal lijkt niet te kloppen (tikfout in de melding?), open de SEC-filing. Correctie = gecorrigeerde melding (4/A), die vervangt de originele.<br>Tip: aankopen op de open markt (P) zijn het sterkste signaal: een insider legt eigen geld in. Verkopen gebeuren vaak om andere redenen (belasting, spreiding, 10b5-1-plannen).</div></div>`;
+  $('#f_mode').value = f.mode; $('#f_code').value = f.code; $('#f_days').value = f.days; $('#f_role').value = f.role;
+  $('#f_min').value = f.min_value; $('#f_ticker').value = f.ticker;
+  const load = async () => {
+    Object.assign(f, { mode: $('#f_mode').value, code: $('#f_code').value, days: $('#f_days').value, role: $('#f_role').value,
+      min_value: $('#f_min').value, ticker: $('#f_ticker').value.trim().toUpperCase() });
+    $('#ins_res').innerHTML = '<div class="empty">Laden…</div>';
+    if (f.mode === 'filing' && (f.code === 'P' || f.code === 'S')) {
+      const rows = await api(`/top?code=${f.code}&days=${f.days}&min_value=${f.min_value || 0}&limit=300`);
+      const filtered = rows.filter(r => (!f.ticker || r.ticker === f.ticker) && (!f.role || (f.role === 'ceo' ? /CEO|Chief Executive/i.test(r.roles) : f.role === 'officer' ? r.is_officer : r.is_director)));
+      $('#ins_res').innerHTML = buysTable(filtered, f.code === 'P' ? 'buy' : 'sell');
+    } else {
+      const p = new URLSearchParams({ days: f.days, limit: 500 });
+      for (const k of ['code', 'min_value', 'role', 'ticker']) if (f[k]) p.set(k, f[k]);
+      $('#ins_res').innerHTML = txTable(await api('/transactions?' + p));
+    }
+  };
+  $('#f_go').onclick = load;
+  document.querySelectorAll('.filters select').forEach(s => s.onchange = load);
+  $('#f_ticker').onkeydown = $('#f_min').onkeydown = e => e.key === 'Enter' && load();
+  load();
+}
+
+async function viewFunds() {
+  const funds = await api('/funds');
+  app.innerHTML = `<h1>Superbeleggers</h1><div class="sub">13F: fondsen met meer dan $100 mln moeten elk kwartaal hun Amerikaanse posities melden, uiterlijk 45 dagen na kwartaaleinde.</div>
+    ${funds.length ? `<div class="fundcards">${funds.map(f => `<div class="card fundcard" onclick="location.hash='#/fonds/${f.cik}'">
+      <div class="name">${esc(f.label || f.name || f.cik)}</div><div class="muted small">${esc(f.name || '')} · CIK ${f.cik}</div>
+      ${f.latest ? `<div style="margin-top:12px" class="row"><div><div class="muted small">Portefeuille</div><b>${money(f.latest.total_value)}</b></div>
+        <div><div class="muted small">Posities</div><b>${num(f.latest.positions)}</b></div>
+        <div><div class="muted small">Kwartaal</div><b>${date(f.latest.period)}</b></div></div>`
+      : '<div class="muted small" style="margin-top:12px">Nog niet gesynchroniseerd</div>'}</div>`).join('')}</div>`
+      : '<div class="card empty">Nog geen fondsen. Voeg er een toe via Instellingen.</div>'}`;
+}
+
+const fundFilter = { status: '' };
+async function viewFund(cik, period) {
+  const d = await api(`/funds/${cik}` + (period ? `?period=${encodeURIComponent(period)}` : ''));
+  const name = d.fund ? (d.fund.label || d.fund.name) : cik;
+  if (!d.filing) { app.innerHTML = `<h1>${esc(name)}</h1><div class="card empty">Nog geen 13F-data. Start een sync.</div>`; return; }
+  const H = d.holdings, cnt = s => H.filter(h => h.status === s).length;
+  const maxW = Math.max(...H.map(h => h.weight), 1);
+  const render = () => {
+    const rows = H.filter(h => !fundFilter.status || h.status === fundFilter.status);
+    $('#hold').innerHTML = rows.length ? `<div class="scroll"><table><thead><tr><th>Positie</th><th>Status</th><th class="num">Waarde</th>
+      <th>Gewicht</th><th class="num">Aandelen</th><th class="num">Wijziging</th><th class="num">Vorig kwartaal</th></tr></thead><tbody>
+      ${rows.map(h => `<tr><td>${tk(h.ticker, '')} ${esc(h.name)} ${h.put_call ? `<span class="badge b-plan">${esc(h.put_call)}</span>` : ''}
+        <div class="muted small">${esc(h.title)} · ${esc(h.cusip)}</div></td>
+        <td><span class="badge b-${h.status}">${h.status}</span></td>
+        <td class="num"><b>${money(h.value)}</b></td>
+        <td><div class="row" style="gap:6px;flex-wrap:nowrap"><div class="bar" style="width:80px"><i style="width:${100 * h.weight / maxW}%"></i></div><span class="small">${String(h.weight).replace('.', ',')}%</span></div></td>
+        <td class="num">${num(h.shares)}</td><td class="num">${h.change_pct != null ? pct(h.change_pct) : '–'}</td>
+        <td class="num muted">${num(h.prev_shares)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Geen posities met deze status.</div>';
+    document.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('primary', b.dataset.st === fundFilter.status));
+  };
+  app.innerHTML = `<div class="row"><div><a href="#/fondsen" class="small">← Superbeleggers</a><h1>${esc(name)}</h1>
+    <div class="sub">${esc(d.fund?.name || '')} · kwartaal ${date(d.filing.period)} · gemeld op ${date(d.filing.filing_date)}
+    · <a href="${filingLink(cik, d.filing.accession)}" target="_blank" rel="noopener">13F-filing ↗</a></div></div>
+    <select id="per" style="margin-left:auto">${d.periods.map(p => `<option ${p === d.filing.period ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+    ${d.filing.value_note ? `<div class="note">⚠ Gecorrigeerd: ${esc(d.filing.value_note)}</div>` : ''}
+    ${d.filing.amendments ? `<div class="note">Inclusief ${JSON.parse(d.filing.amendments).map(a => `correctie van ${date(a.filing_date)} (${a.type === 'NEW HOLDINGS' ? 'nieuwe posities' : 'volledige herziening'})`).join(', ')}.</div>` : ''}
+    <div class="grid g4" style="margin-bottom:16px">
+      <div class="card tile"><div class="lbl">Portefeuille</div><div class="val">${money(d.filing.total_value)}</div>
+        <div class="hint">${d.previous ? 'vorig kw. ' + money(d.previous.total_value) : ''}</div></div>
+      <div class="card tile"><div class="lbl">Nieuw</div><div class="val pos">${cnt('nieuw')}</div></div>
+      <div class="card tile"><div class="lbl">Bijgekocht / afgebouwd</div><div class="val">${cnt('bijgekocht')} / ${cnt('afgebouwd')}</div></div>
+      <div class="card tile"><div class="lbl">Volledig verkocht</div><div class="val neg">${cnt('verkocht')}</div></div>
+    </div>
+    <div class="card"><div class="filters">${[['', 'Alles'], ['nieuw', 'Nieuw'], ['bijgekocht', 'Bijgekocht'], ['afgebouwd', 'Afgebouwd'], ['verkocht', 'Verkocht'], ['gelijk', 'Gelijk']]
+      .map(([k, l]) => `<button data-st="${k}">${l}</button>`).join('')}</div><div id="hold"></div>
+      <div class="legend">13F laat alleen Amerikaanse long-posities (en opties) zien op kwartaaleinde, geen shorts of buitenlandse aandelen. De data loopt tot 45 dagen achter.</div></div>`;
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { fundFilter.status = b.dataset.st; render(); });
+  $('#per').onchange = e => location.hash = `#/fonds/${cik}/${encodeURIComponent(e.target.value)}`;
+  render();
+}
+
+async function viewStock(t) {
+  const d = await api('/stock/' + encodeURIComponent(t));
+  const watch = await api('/watchlist');
+  const onWatch = watch.some(w => w.ticker === d.ticker);
+  app.innerHTML = `<div class="row"><div><h1>${esc(d.ticker)} <span class="muted" style="font-weight:400">${esc(d.info?.title || '')}</span></h1>
+    <div class="sub">Insider-activiteit en superbeleggers die dit aandeel bezitten.</div></div>
+    <button id="wbtn" style="margin-left:auto;${STATIC ? 'display:none' : ''}">${onWatch ? '★ Op watchlist' : '☆ Volg dit aandeel'}</button></div>
+    <div class="grid g4" style="margin-bottom:16px">
+      <div class="card tile"><div class="lbl">Insider-aankopen 12m</div><div class="val pos">${money(d.buy_total_12m)}</div><div class="hint">${d.buyers_12m} kopers</div></div>
+      <div class="card tile"><div class="lbl">Insider-verkopen 12m</div><div class="val neg">${money(d.sell_total_12m)}</div><div class="hint">${d.sellers_12m} verkopers</div></div>
+      <div class="card tile"><div class="lbl">Gevolgde fondsen</div><div class="val">${d.fund_holders.length}</div><div class="hint">met een positie</div></div>
+      <div class="card tile"><div class="lbl">Transacties</div><div class="val">${d.transactions.length}</div><div class="hint">laatste 2 jaar</div></div>
+    </div>
+    ${d.fund_holders.length ? `<div class="card" style="margin-bottom:16px"><h2>Superbeleggers met ${esc(d.ticker)}</h2><table><thead><tr><th>Fonds</th><th>Status</th>
+      <th class="num">Waarde</th><th class="num">Gewicht</th><th class="num">Wijziging</th><th>Kwartaal</th></tr></thead><tbody>
+      ${d.fund_holders.map(h => `<tr><td><a href="#/fonds/${h.fund_cik}">${esc(h.fund)}</a></td><td><span class="badge b-${h.status}">${h.status}</span></td>
+      <td class="num">${money(h.value)}</td><td class="num">${String(h.weight).replace('.', ',')}%</td><td class="num">${h.change_pct != null ? pct(h.change_pct) : '–'}</td>
+      <td>${date(h.period)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <div class="card"><h2>Insider-transacties</h2>${d.transactions.length ? txTable(d.transactions, false)
+      : `<div class="empty">Geen transacties in de database.${onWatch ? ' Wacht op de volgende sync.' : ' Zet het aandeel op je watchlist om de historie op te halen.'}</div>`}</div>`;
+  $('#wbtn').onclick = async () => {
+    try { await post('/watchlist', { ticker: d.ticker, remove: onWatch }); toast(onWatch ? 'Verwijderd' : 'Toegevoegd. Historie komt bij de volgende sync.'); route(); }
+    catch (e) { toast(e.message); }
+  };
+}
+
+async function viewAlerts() {
+  app.innerHTML = `<h1>Alerts</h1><div class="sub">Alle meldingen die de tracker heeft aangemaakt.</div><div class="card">${alertsList(await api('/alerts'))}</div>`;
+}
+
+async function viewSettings() {
+  const [w, f, s] = await Promise.all([api('/watchlist'), api('/funds'), api('/stats')]);
+  const sy = s.sync;
+  if (STATIC) {
+    app.innerHTML = `<h1>Instellingen</h1><div class="sub">Deze versie draait op GitHub Pages. Een GitHub Action haalt elk uur nieuwe data op.</div>
+      <div class="grid g2"><div class="card"><h2>Laatste update</h2>
+        <div class="muted">${esc(sy.last_run || 'onbekend')}</div>
+        ${sy.last_error ? `<div class="neg">Fout: ${esc(sy.last_error)}</div>` : ''}
+        ${(sy.warnings || []).length ? `<div class="note" style="margin-top:8px">${sy.warnings.map(esc).join('<br>')}</div>` : ''}
+        <div class="legend">Watchlist, fondsen en alert-drempels wijzig je in <b>config.pages.json</b> in je repo. Na een commit draait de Action vanzelf opnieuw.
+        Op deze site staan alle aankopen, verkopen vanaf $${num((await sj('transactions.json')).min_sale_value)}, en alles van je watchlist.</div></div>
+      <div class="card"><h2>Watchlist</h2><div class="chips">${w.map(x => `<span class="chip" style="padding-right:12px"><a href="#/aandeel/${esc(x.ticker)}"><b>${esc(x.ticker)}</b></a>
+        <span class="muted small">${esc((x.title || '').slice(0, 22))}</span></span>`).join('')}</div>
+        <h2 style="margin-top:20px">Fondsen</h2>${f.map(x => `<div><a href="#/fonds/${x.cik}">${esc(x.label || x.name)}</a> <span class="muted small">CIK ${x.cik}</span></div>`).join('')}</div></div>`;
+    return;
+  }
+  app.innerHTML = `<h1>Instellingen</h1><div class="sub">Drempels voor alerts en meldingskanalen stel je in via config.json.</div>
+    <div class="grid g2">
+      <div class="card"><h2>Synchronisatie</h2>
+        <div class="muted" style="margin-bottom:10px">${sy.running ? `Bezig: <b>${esc(sy.phase)}</b> ${esc(sy.detail)}` : `Laatste sync: ${esc(sy.last_run || 'nog nooit')}`}
+          ${sy.last_error ? `<div class="neg">Fout: ${esc(sy.last_error)}</div>` : ''}
+          ${(sy.warnings || []).length ? `<div class="note" style="margin-top:8px">${sy.warnings.map(esc).join('<br>')}</div>` : ''}
+          ${sy.last_counts && Object.keys(sy.last_counts).length ? `<div class="small">${(() => {
+            const c = sy.last_counts, L = { watchlist_tx: 'watchlist-transacties', market_tx: 'markt-transacties', f13_filings: 'nieuwe 13F-rapporten', new_alerts: 'nieuwe alerts', sent: 'verstuurd' };
+            return Object.entries(c).filter(([k]) => L[k]).map(([k, v]) => `${num(v)} ${L[k]}`).join(' · ');
+          })()}</div>` : ''}</div>
+        <div class="row"><button class="primary" id="sync_all" ${sy.running ? 'disabled' : ''}>Alles syncen</button>
+          <button id="sync_quick" ${sy.running ? 'disabled' : ''}>Alleen watchlist</button>
+          <button id="test_alert">Test-alert</button></div></div>
+      <div class="card"><h2>Watchlist</h2>
+        <div class="chips" style="margin-bottom:12px">${w.map(x => `<span class="chip"><a href="#/aandeel/${esc(x.ticker)}"><b>${esc(x.ticker)}</b></a>
+          <span class="muted small">${esc((x.title || '').slice(0, 22))}</span><button data-rm="${esc(x.ticker)}">✕</button></span>`).join('') || '<span class="muted">Leeg</span>'}</div>
+        <div class="row"><input id="w_add" placeholder="Ticker, bv. AMD" style="width:160px"><button id="w_btn">Toevoegen</button></div>
+        <div class="legend">Alleen Amerikaanse bedrijven (en buitenlandse bedrijven die als US-bedrijf rapporteren) hebben Form 4-meldingen.</div></div>
+      <div class="card"><h2>Fondsen (13F)</h2>
+        <table><tbody>${f.map(x => `<tr><td><a href="#/fonds/${x.cik}">${esc(x.label || x.name || x.cik)}</a><div class="muted small">${esc(x.name || '')} · CIK ${x.cik}</div></td>
+          <td class="num"><button data-frm="${x.cik}">Verwijder</button></td></tr>`).join('')}</tbody></table>
+        <div class="row" style="margin-top:12px"><input id="f_cik" placeholder="CIK" style="width:130px"><input id="f_label" placeholder="Naam (optioneel)" style="width:180px"><button id="f_btn">Toevoegen</button></div>
+        <div class="legend">Zoek de CIK van een fonds op <a href="https://www.sec.gov/edgar/search/" target="_blank" rel="noopener">sec.gov/edgar/search</a>. De officiële naam verschijnt na de volgende sync, zodat je kunt controleren of het klopt.</div></div>
+    </div>`;
+  const sync = async body => { await post('/sync', body); toast('Sync gestart'); setTimeout(route, 800); };
+  $('#sync_all').onclick = () => sync({});
+  $('#sync_quick').onclick = () => sync({ market: false, funds: false });
+  $('#test_alert').onclick = async () => toast((await post('/test-alert')).ok ? 'Test-alert verstuurd' : 'Versturen mislukt, kijk in de log');
+  const addW = async () => { try { await post('/watchlist', { ticker: $('#w_add').value }); route(); } catch (e) { toast(e.message); } };
+  $('#w_btn').onclick = addW; $('#w_add').onkeydown = e => e.key === 'Enter' && addW();
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { await post('/watchlist', { ticker: b.dataset.rm, remove: true }); route(); });
+  document.querySelectorAll('[data-frm]').forEach(b => b.onclick = async () => { if (confirm('Fonds en data verwijderen?')) { await post('/funds', { cik: b.dataset.frm, remove: true }); route(); } });
+  $('#f_btn').onclick = async () => { try { await post('/funds', { cik: $('#f_cik').value, label: $('#f_label').value }); toast('Toegevoegd. Data komt bij de volgende sync.'); route(); } catch (e) { toast(e.message); } };
+}
+
+// ---------- search + sync pill
+let sTimer;
+$('#q').oninput = e => {
+  clearTimeout(sTimer);
+  const v = e.target.value.trim();
+  if (!v) { $('#suggest').style.display = 'none'; return; }
+  sTimer = setTimeout(async () => {
+    const r = await api('/search?q=' + encodeURIComponent(v));
+    $('#suggest').innerHTML = r.map(x => `<div data-t="${esc(x.ticker)}"><b>${esc(x.ticker)}</b><span class="muted">${esc(x.title)}</span></div>`).join('');
+    $('#suggest').style.display = r.length ? 'block' : 'none';
+    document.querySelectorAll('#suggest div').forEach(d => d.onclick = () => go(d.dataset.t));
+  }, 150);
+};
+$('#q').onkeydown = e => { if (e.key === 'Enter' && e.target.value.trim()) go(e.target.value.trim().toUpperCase()); };
+function go(t) { $('#q').value = ''; $('#suggest').style.display = 'none'; location.hash = '#/aandeel/' + t; }
+document.addEventListener('click', e => { if (!e.target.closest('.search')) $('#suggest').style.display = 'none'; });
+
+let wasRunning = false;
+async function pollSync() {
+  try {
+    const s = (await api('/stats')).sync;
+    $('#syncpill').textContent = s.running ? `⟳ ${s.phase} ${s.detail}` : (s.last_run ? '✓ sync ' + new Date(s.last_run).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '');
+    if (wasRunning && !s.running) route();
+    wasRunning = s.running;
+  } catch (e) {}
+}
+if (!STATIC) { setInterval(pollSync, 4000); pollSync(); }
+else {
+  // op GitHub Pages: link terug naar de startpagina
+  const back = document.createElement('a'); back.href = '../beleggen/'; back.textContent = '← Beleggen';
+  back.style.cssText = 'color:var(--muted);font-size:13px'; document.querySelector('.brand').before(back);
+}
+if (STATIC) sj('stats.json').then(s => { $('#syncpill').textContent = s.sync.last_run ? '✓ data van ' + new Date(s.sync.last_run).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; });
+route();
+</script>
+</body>
+</html>

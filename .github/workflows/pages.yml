@@ -1,0 +1,67 @@
+name: Insider Tracker (GitHub Pages)
+
+on:
+  schedule:
+    - cron: "23 * * * *"        # elk uur, op :23 (GitHub kan dit een paar minuten vertragen)
+  workflow_dispatch:             # handmatig starten via tabblad Actions
+  push:
+    branches: [main]
+    paths: ["config.pages.json", "web/**", "tracker/**", ".github/workflows/pages.yml"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: insider-tracker
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # De database blijft tussen runs bewaard in de Actions-cache,
+      # zodat elke run alleen nieuwe meldingen ophaalt.
+      - name: Database terughalen
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: tracker-db-${{ github.run_id }}
+          restore-keys: tracker-db-
+
+      - name: Sync met de SEC + alerts
+        env:
+          TRACKER_USER_AGENT: ${{ secrets.TRACKER_USER_AGENT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
+        run: python main.py sync --config config.pages.json
+
+      - name: Database bewaren
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: tracker-db-${{ github.run_id }}
+
+      - name: Statische site maken
+        run: python main.py export --config config.pages.json --out _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
